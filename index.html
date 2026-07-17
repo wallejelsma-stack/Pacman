@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pacman Smiley - Come todas las bolitas!</title>
+    <title>Pacman Smiley - Eet alle balletjes!</title>
     <style>
         * {
             margin: 0;
@@ -257,52 +257,52 @@
 
         <div class="stats-container">
             <div class="stat">Score: <span id="score">0</span></div>
-            <div class="stat high-score">🏆 High: <span id="highScore">0</span></div>
-            <div class="stat">Pelotitas: <span id="pellets">0</span></div>
-            <div class="stat">Vidas: <span id="lives">3</span></div>
+            <div class="stat high-score">🏆 Top: <span id="highScore">0</span></div>
+            <div class="stat">Balletjes: <span id="pellets">0</span></div>
+            <div class="stat">Levens: <span id="lives">3</span></div>
         </div>
 
         <div class="canvas-wrapper">
             <canvas id="gameCanvas" width="600" height="600"></canvas>
             <div class="nav-buttons">
-                <button class="nav-btn pause" id="pauseBtn" onclick="togglePause()">⏸ Pausa</button>
-                <button class="nav-btn stop" id="stopBtn" onclick="stopGame()">⏹ Parar</button>
+                <button class="nav-btn pause" id="pauseBtn" onclick="togglePause()">⏸ Pauze</button>
+                <button class="nav-btn stop" id="stopBtn" onclick="stopGame()">⏹ Stop</button>
             </div>
         </div>
 
         <div class="controls">
-            <p><strong>⬅️ ⬆️ ⬇️ ➡️</strong> Mueve el smiley</p>
-            <p><strong>ESPACIO</strong> Pausa/Reanuda | <strong>R</strong> Reinicia | <strong>ESC</strong> Salir al menú</p>
+            <p><strong>⬅️ ⬆️ ⬇️ ➡️</strong> Beweeg de smiley</p>
+            <p><strong>SPATIE</strong> Pauze/Hervatting | <strong>R</strong> Herstart | <strong>ESC</strong> Terug naar menu</p>
         </div>
     </div>
 
     <div class="game-over-screen" id="gameOverScreen">
         <div class="score-card">
-            <h2 id="gameOverTitle">GAME OVER</h2>
+            <h2 id="gameOverTitle">SPEL VOORBIJ</h2>
             <p id="gameOverMessage"></p>
 
             <div class="score-details">
                 <div class="score-row">
-                    <strong>Tu Score:</strong>
+                    <strong>Jouw Score:</strong>
                     <span class="score-value" id="finalScore">0</span>
                 </div>
                 <div class="score-row">
-                    <strong>High Score:</strong>
+                    <strong>Top Score:</strong>
                     <span class="score-value" id="displayHighScore">0</span>
                 </div>
                 <div class="score-row">
-                    <strong>Bolitas Comidas:</strong>
+                    <strong>Balletjes Gegeten:</strong>
                     <span class="score-value" id="pelletCount">0</span>
                 </div>
             </div>
 
             <div id="newHighScoreAlert" class="high-score-alert" style="display: none;">
-                🎉 ¡NUEVO HIGH SCORE! 🎉
+                🎉 NIEUW TOP SCORE! 🎉
             </div>
 
             <div class="button-group">
-                <button onclick="startNewGame()">🎮 Jugar de Nuevo</button>
-                <button class="secondary" onclick="goToMenu()">🏠 Ir al Menú</button>
+                <button onclick="startNewGame()">🎮 Opnieuw Spelen</button>
+                <button class="secondary" onclick="goToMenu()">🏠 Terug naar Menu</button>
             </div>
         </div>
     </div>
@@ -389,9 +389,9 @@
         function updatePauseButton() {
             const pauseBtn = document.getElementById('pauseBtn');
             if (gameState.gamePaused) {
-                pauseBtn.textContent = '▶ Reanuda';
+                pauseBtn.textContent = '▶ Hervatting';
             } else {
-                pauseBtn.textContent = '⏸ Pausa';
+                pauseBtn.textContent = '⏸ Pauze';
             }
         }
 
@@ -533,21 +533,21 @@
             }
 
             if (won) {
-                title.textContent = '¡GANASTE! 🎉';
+                title.textContent = 'JE HEBT GEWONNEN! 🎉';
                 title.classList.add('win-text');
                 title.classList.remove('lose-text');
-                message.textContent = '¡Comiste todas las bolitas!';
+                message.textContent = 'Je hebt alle balletjes gegeten!';
             } else if (stoppedByUser) {
-                title.textContent = 'JUEGO PAUSADO';
+                title.textContent = 'SPEL ONDERBROKEN';
                 title.classList.remove('win-text');
                 title.classList.remove('lose-text');
                 title.style.color = '#ffd700';
-                message.textContent = 'Has salido del juego';
+                message.textContent = 'Je bent uit het spel gegaan';
             } else {
-                title.textContent = 'GAME OVER';
+                title.textContent = 'SPEL VOORBIJ';
                 title.classList.add('lose-text');
                 title.classList.remove('win-text');
-                message.textContent = 'Los fantasmas te atraparon...';
+                message.textContent = 'De spoken hebben je gepakt...';
             }
 
             screen.classList.add('show');
@@ -591,14 +591,14 @@
                 drawGhost(ghost.x, ghost.y, ghost.color);
             });
 
-            // Estado de pausa
+            // Status van pauze
             if (gameState.gamePaused) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = '#ffd700';
                 ctx.font = 'bold 40px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('PAUSADO', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('GEPAUZEERD', canvas.width / 2, canvas.height / 2);
             }
         }
 
