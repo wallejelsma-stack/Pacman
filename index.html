@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacman Smiley - Come todas las bolitas!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #fff;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            color: #ffd700;
+        }
+
+        .stats {
+            display: flex;
+            gap: 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .stat {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: 2px solid #ffd700;
+        }
+
+        canvas {
+            border: 4px solid #ffd700;
+            background: #000;
+            display: block;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+        }
+
+        .controls {
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px 25px;
+            border-radius: 8px;
+            border: 2px solid #ffd700;
+        }
+
+        .controls p {
+            margin: 8px 0;
+            font-size: 0.95em;
+        }
+
+        .game-over-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            gap: 20px;
+        }
+
+        .game-over-screen.show {
+            display: flex;
+        }
+
+        .game-over-screen h2 {
+            font-size: 3em;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            color: #ffd700;
+        }
+
+        .game-over-screen p {
+            font-size: 1.5em;
+            color: #fff;
+        }
+
+        .game-over-screen button {
+            padding: 15px 40px;
+            font-size: 1.2em;
+            background: #ffd700;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #000;
+            transition: transform 0.2s;
+        }
+
+        .game-over-screen button:hover {
+            transform: scale(1.1);
+            background: #ffed4e;
+        }
+
+        .win-text {
+            color: #00ff00;
+        }
+
+        .lose-text {
+            color: #ff6666;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>👾 PACMAN SMILEY 😊</h1>
+
+        <div class="stats">
+            <div class="stat">Score: <span id="score">0</span></div>
+            <div class="stat">Pelotitas: <span id="pellets">0</span></div>
+            <div class="stat">Vidas: <span id="lives">3</span></div>
+        </div>
+
+        <canvas id="gameCanvas" width="600" height="600"></canvas>
+
+        <div class="controls">
+            <p><strong>⬅️ ⬆️ ⬇️ ➡️</strong> Mueve el smiley</p>
+            <p><strong>ESPACIO</strong> Pausa/Reanuda</p>
+            <p><strong>R</strong> Reinicia el juego</p>
+        </div>
+    </div>
+
+    <div class="game-over-screen" id="gameOverScreen">
+        <h2 id="gameOverTitle">GAME OVER</h2>
+        <p id="gameOverMessage"></p>
+        <p>Score Final: <span id="finalScore">0</span></p>
+        <button onclick="location.reload()">Jugar de Nuevo</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const GRID_SIZE = 20;
+        const CELL_SIZE = 30;
+        const PELLET_SIZE = 4;
+        const SMILEY_SIZE = 24;
+        const GHOST_SIZE = 24;
+        const MOVE_SPEED = 0.1;
+
+        let gameState = {
+            smiley: { x: 10, y: 10 },
+            direction: { x: 0, y: 0 },
+            nextDirection: { x: 0, y: 0 },
+            pellets: [],
+            ghosts: [
+                { x: 2, y: 2, color: '#ff0000', dx: 1, dy: 0 },
+                { x: 17, y: 2, color: '#ff69b4', dx: -1, dy: 0 },
+                { x: 2, y: 17, color: '#00ffff', dx: 0, dy: 1 },
+                { x: 17, y: 17, color: '#ffb347', dx: 0, dy: -1 }
+            ],
+            score: 0,
+            lives: 3,
+            gameRunning: false,
+            gamePaused: false,
+            moveTimer: 0,
+            gameOver: false,
+            won: false
+        };
+
+        function initGame() {
+            gameState.smiley = { x: 10, y: 10 };
+            gameState.direction = { x: 0, y: 0 };
+            gameState.nextDirection = { x: 0, y: 0 };
+            gameState.pellets = [];
+            gameState.score = 0;
+            gameState.lives = 3;
+            gameState.gameRunning = true;
+            gameState.gamePaused = false;
+            gameState.moveTimer = 0;
+            gameState.gameOver = false;
+            gameState.won = false;
+
+            // Spawnear pelotitas en todo el laberinto
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    if (Math.random() > 0.15 && !(x === 10 && y === 10)) {
+                        gameState.pellets.push({ x, y });
+                    }
+                }
+            }
+
+            document.getElementById('gameOverScreen').classList.remove('show');
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('pellets').textContent = gameState.pellets.length;
+            document.getElementById('lives').textContent = gameState.lives;
+        }
+
+        function update(dt) {
+            if (!gameState.gameRunning || gameState.gamePaused || gameState.gameOver || gameState.won) return;
+
+            gameState.moveTimer += dt;
+
+            if (gameState.moveTimer >= MOVE_SPEED) {
+                // Actualizar dirección
+                if (gameState.nextDirection.x !== 0 || gameState.nextDirection.y !== 0) {
+                    gameState.direction = { ...gameState.nextDirection };
+                }
+
+                // Mover smiley
+                let newX = gameState.smiley.x + gameState.direction.x;
+                let newY = gameState.smiley.y + gameState.direction.y;
+
+                // Wrapping (salir por un lado entra por el otro)
+                if (newX < 0) newX = GRID_SIZE - 1;
+                if (newX >= GRID_SIZE) newX = 0;
+                if (newY < 0) newY = GRID_SIZE - 1;
+                if (newY >= GRID_SIZE) newY = 0;
+
+                gameState.smiley.x = newX;
+                gameState.smiley.y = newY;
+
+                // Revisar colisión con pelotitas
+                const pelletIndex = gameState.pellets.findIndex(p => p.x === gameState.smiley.x && p.y === gameState.smiley.y);
+                if (pelletIndex !== -1) {
+                    gameState.pellets.splice(pelletIndex, 1);
+                    gameState.score += 10;
+                }
+
+                // Revisar si ganó (todas las pelotitas comidas)
+                if (gameState.pellets.length === 0) {
+                    gameState.won = true;
+                    gameState.gameRunning = false;
+                    showGameOver(true);
+                }
+
+                // Mover fantasmas y revisar colisiones
+                moveGhosts();
+                checkGhostCollisions();
+
+                gameState.moveTimer = 0;
+                updateUI();
+            }
+        }
+
+        function moveGhosts() {
+            gameState.ghosts.forEach(ghost => {
+                let newX = ghost.x + ghost.dx;
+                let newY = ghost.y + ghost.dy;
+
+                // Wrapping para fantasmas
+                if (newX < 0) newX = GRID_SIZE - 1;
+                if (newX >= GRID_SIZE) newX = 0;
+                if (newY < 0) newY = GRID_SIZE - 1;
+                if (newY >= GRID_SIZE) newY = 0;
+
+                ghost.x = newX;
+                ghost.y = newY;
+
+                // Cambiar dirección aleatoriamente a veces
+                if (Math.random() < 0.02) {
+                    const directions = [
+                        { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
+                        { dx: 0, dy: 1 }, { dx: 0, dy: -1 }
+                    ];
+                    const newDir = directions[Math.floor(Math.random() * directions.length)];
+                    ghost.dx = newDir.dx;
+                    ghost.dy = newDir.dy;
+                }
+            });
+        }
+
+        function checkGhostCollisions() {
+            for (let ghost of gameState.ghosts) {
+                if (ghost.x === gameState.smiley.x && ghost.y === gameState.smiley.y) {
+                    gameState.lives--;
+                    updateUI();
+
+                    if (gameState.lives <= 0) {
+                        gameState.gameRunning = false;
+                        gameState.gameOver = true;
+                        showGameOver(false);
+                    } else {
+                        // Reiniciar posición del smiley
+                        gameState.smiley = { x: 10, y: 10 };
+                    }
+                }
+            }
+        }
+
+        function showGameOver(won) {
+            const screen = document.getElementById('gameOverScreen');
+            const title = document.getElementById('gameOverTitle');
+            const message = document.getElementById('gameOverMessage');
+            const finalScore = document.getElementById('finalScore');
+
+            finalScore.textContent = gameState.score;
+
+            if (won) {
+                title.textContent = '¡GANASTE! 🎉';
+                title.classList.add('win-text');
+                title.classList.remove('lose-text');
+                message.textContent = '¡Comiste todas las bolitas!';
+            } else {
+                title.textContent = 'GAME OVER';
+                title.classList.add('lose-text');
+                title.classList.remove('win-text');
+                message.textContent = 'Los fantasmas te atraparon...';
+            }
+
+            screen.classList.add('show');
+        }
+
+        function draw() {
+            // Fondo
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grid
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= GRID_SIZE; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * CELL_SIZE, 0);
+                ctx.lineTo(i * CELL_SIZE, canvas.height);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, i * CELL_SIZE);
+                ctx.lineTo(canvas.width, i * CELL_SIZE);
+                ctx.stroke();
+            }
+
+            // Pelotitas
+            ctx.fillStyle = '#ffb347';
+            gameState.pellets.forEach(pellet => {
+                const centerX = pellet.x * CELL_SIZE + CELL_SIZE / 2;
+                const centerY = pellet.y * CELL_SIZE + CELL_SIZE / 2;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, PELLET_SIZE, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Smiley (Pacman)
+            drawSmiley(gameState.smiley.x, gameState.smiley.y);
+
+            // Fantasmas
+            gameState.ghosts.forEach(ghost => {
+                drawGhost(ghost.x, ghost.y, ghost.color);
+            });
+
+            // Estado de pausa
+            if (gameState.gamePaused) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 40px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('PAUSADO', canvas.width / 2, canvas.height / 2);
+            }
+        }
+
+        function drawSmiley(gridX, gridY) {
+            const centerX = gridX * CELL_SIZE + CELL_SIZE / 2;
+            const centerY = gridY * CELL_SIZE + CELL_SIZE / 2;
+            const radius = SMILEY_SIZE / 2;
+
+            // Cabeza amarilla
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ojo izquierdo
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(centerX - 6, centerY - 4, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ojo derecho
+            ctx.beginPath();
+            ctx.arc(centerX + 6, centerY - 4, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Boca sonriente
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY + 2, 5, 0, Math.PI);
+            ctx.stroke();
+        }
+
+        function drawGhost(gridX, gridY, color) {
+            const centerX = gridX * CELL_SIZE + CELL_SIZE / 2;
+            const centerY = gridY * CELL_SIZE + CELL_SIZE / 2;
+            const size = GHOST_SIZE / 2;
+
+            ctx.fillStyle = color;
+
+            // Cuerpo
+            ctx.fillRect(centerX - size, centerY - size, size * 2, size * 2);
+
+            // Cabeza redondeada
+            ctx.beginPath();
+            ctx.arc(centerX, centerY - size, size, Math.PI, 0);
+            ctx.fill();
+
+            // Ojos
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(centerX - 4, centerY - 3, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(centerX + 4, centerY - 3, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupilas
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(centerX - 4, centerY - 3, 1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(centerX + 4, centerY - 3, 1, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function gameLoop(dt) {
+            update(dt);
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ') {
+                e.preventDefault();
+                gameState.gamePaused = !gameState.gamePaused;
+            }
+            if (e.key === 'r' || e.key === 'R') {
+                initGame();
+            }
+            if (e.key === 'ArrowUp') {
+                gameState.nextDirection = { x: 0, y: -1 };
+                e.preventDefault();
+            }
+            if (e.key === 'ArrowDown') {
+                gameState.nextDirection = { x: 0, y: 1 };
+                e.preventDefault();
+            }
+            if (e.key === 'ArrowLeft') {
+                gameState.nextDirection = { x: -1, y: 0 };
+                e.preventDefault();
+            }
+            if (e.key === 'ArrowRight') {
+                gameState.nextDirection = { x: 1, y: 0 };
+                e.preventDefault();
+            }
+        });
+
+        // Iniciar
+        initGame();
+        let lastTime = Date.now();
+        gameLoop(0);
+
+        // Delta time actualizado
+        setInterval(() => {
+            const now = Date.now();
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+        }, 16);
+    </script>
+</body>
+</html>
