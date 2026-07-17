@@ -34,11 +34,13 @@
             color: #ffd700;
         }
 
-        .stats {
+        .stats-container {
             display: flex;
             gap: 30px;
             font-size: 1.2em;
             font-weight: bold;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .stat {
@@ -48,11 +50,66 @@
             border: 2px solid #ffd700;
         }
 
+        .high-score {
+            background: rgba(255, 215, 0, 0.1) !important;
+            border-color: #ffed4e !important;
+            color: #ffed4e;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
         canvas {
             border: 4px solid #ffd700;
             background: #000;
             display: block;
             box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+        }
+
+        .nav-buttons {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            padding: 8px 12px;
+            font-size: 0.9em;
+            background: rgba(255, 215, 0, 0.9);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #000;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #ffed4e;
+            transform: scale(1.05);
+        }
+
+        .nav-btn.pause {
+            background: rgba(100, 200, 255, 0.9);
+            color: #000;
+        }
+
+        .nav-btn.pause:hover {
+            background: rgba(150, 220, 255, 1);
+        }
+
+        .nav-btn.stop {
+            background: rgba(255, 100, 100, 0.9);
+            color: #fff;
+        }
+
+        .nav-btn.stop:hover {
+            background: rgba(255, 150, 150, 1);
         }
 
         .controls {
@@ -74,45 +131,115 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95);
             display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 1000;
-            gap: 20px;
+            gap: 25px;
         }
 
         .game-over-screen.show {
             display: flex;
         }
 
+        .score-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 3px solid #ffd700;
+            border-radius: 15px;
+            padding: 30px;
+            min-width: 350px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
         .game-over-screen h2 {
             font-size: 3em;
             text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
             color: #ffd700;
+            margin-bottom: 15px;
         }
 
         .game-over-screen p {
-            font-size: 1.5em;
+            font-size: 1.3em;
             color: #fff;
+            margin: 10px 0;
+        }
+
+        .score-details {
+            display: grid;
+            gap: 12px;
+            margin: 20px 0;
+            text-align: left;
+            background: rgba(255, 215, 0, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.2em;
+        }
+
+        .score-row strong {
+            color: #ffed4e;
+        }
+
+        .score-value {
+            color: #00ff00;
+            font-weight: bold;
+        }
+
+        .high-score-alert {
+            background: rgba(0, 255, 0, 0.2);
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 15px 0;
+            font-size: 1.1em;
+            color: #00ff00;
+            animation: pulse 0.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 1; }
+            to { opacity: 0.7; }
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .game-over-screen button {
-            padding: 15px 40px;
-            font-size: 1.2em;
+            padding: 12px 35px;
+            font-size: 1.1em;
             background: #ffd700;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
             color: #000;
-            transition: transform 0.2s;
+            transition: all 0.2s;
         }
 
         .game-over-screen button:hover {
             transform: scale(1.1);
             background: #ffed4e;
+        }
+
+        .game-over-screen button.secondary {
+            background: #666;
+            color: #fff;
+        }
+
+        .game-over-screen button.secondary:hover {
+            background: #888;
         }
 
         .win-text {
@@ -128,26 +255,56 @@
     <div class="game-container">
         <h1>👾 PACMAN SMILEY 😊</h1>
 
-        <div class="stats">
+        <div class="stats-container">
             <div class="stat">Score: <span id="score">0</span></div>
+            <div class="stat high-score">🏆 High: <span id="highScore">0</span></div>
             <div class="stat">Pelotitas: <span id="pellets">0</span></div>
             <div class="stat">Vidas: <span id="lives">3</span></div>
         </div>
 
-        <canvas id="gameCanvas" width="600" height="600"></canvas>
+        <div class="canvas-wrapper">
+            <canvas id="gameCanvas" width="600" height="600"></canvas>
+            <div class="nav-buttons">
+                <button class="nav-btn pause" id="pauseBtn" onclick="togglePause()">⏸ Pausa</button>
+                <button class="nav-btn stop" id="stopBtn" onclick="stopGame()">⏹ Parar</button>
+            </div>
+        </div>
 
         <div class="controls">
             <p><strong>⬅️ ⬆️ ⬇️ ➡️</strong> Mueve el smiley</p>
-            <p><strong>ESPACIO</strong> Pausa/Reanuda</p>
-            <p><strong>R</strong> Reinicia el juego</p>
+            <p><strong>ESPACIO</strong> Pausa/Reanuda | <strong>R</strong> Reinicia | <strong>ESC</strong> Salir al menú</p>
         </div>
     </div>
 
     <div class="game-over-screen" id="gameOverScreen">
-        <h2 id="gameOverTitle">GAME OVER</h2>
-        <p id="gameOverMessage"></p>
-        <p>Score Final: <span id="finalScore">0</span></p>
-        <button onclick="location.reload()">Jugar de Nuevo</button>
+        <div class="score-card">
+            <h2 id="gameOverTitle">GAME OVER</h2>
+            <p id="gameOverMessage"></p>
+
+            <div class="score-details">
+                <div class="score-row">
+                    <strong>Tu Score:</strong>
+                    <span class="score-value" id="finalScore">0</span>
+                </div>
+                <div class="score-row">
+                    <strong>High Score:</strong>
+                    <span class="score-value" id="displayHighScore">0</span>
+                </div>
+                <div class="score-row">
+                    <strong>Bolitas Comidas:</strong>
+                    <span class="score-value" id="pelletCount">0</span>
+                </div>
+            </div>
+
+            <div id="newHighScoreAlert" class="high-score-alert" style="display: none;">
+                🎉 ¡NUEVO HIGH SCORE! 🎉
+            </div>
+
+            <div class="button-group">
+                <button onclick="startNewGame()">🎮 Jugar de Nuevo</button>
+                <button class="secondary" onclick="goToMenu()">🏠 Ir al Menú</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -160,6 +317,7 @@
         const SMILEY_SIZE = 24;
         const GHOST_SIZE = 24;
         const MOVE_SPEED = 0.1;
+        const STORAGE_KEY = 'pacmanSmileyHighScore';
 
         let gameState = {
             smiley: { x: 10, y: 10 },
@@ -178,8 +336,20 @@
             gamePaused: false,
             moveTimer: 0,
             gameOver: false,
-            won: false
+            won: false,
+            initialPelletCount: 0
         };
+
+        let highScore = localStorage.getItem(STORAGE_KEY) ? parseInt(localStorage.getItem(STORAGE_KEY)) : 0;
+
+        function saveHighScore() {
+            if (gameState.score > highScore) {
+                highScore = gameState.score;
+                localStorage.setItem(STORAGE_KEY, highScore);
+                return true;
+            }
+            return false;
+        }
 
         function initGame() {
             gameState.smiley = { x: 10, y: 10 };
@@ -203,14 +373,49 @@
                 }
             }
 
+            gameState.initialPelletCount = gameState.pellets.length;
             document.getElementById('gameOverScreen').classList.remove('show');
             updateUI();
+            updatePauseButton();
         }
 
         function updateUI() {
             document.getElementById('score').textContent = gameState.score;
+            document.getElementById('highScore').textContent = highScore;
             document.getElementById('pellets').textContent = gameState.pellets.length;
             document.getElementById('lives').textContent = gameState.lives;
+        }
+
+        function updatePauseButton() {
+            const pauseBtn = document.getElementById('pauseBtn');
+            if (gameState.gamePaused) {
+                pauseBtn.textContent = '▶ Reanuda';
+            } else {
+                pauseBtn.textContent = '⏸ Pausa';
+            }
+        }
+
+        function togglePause() {
+            if (!gameState.gameRunning) return;
+            gameState.gamePaused = !gameState.gamePaused;
+            updatePauseButton();
+        }
+
+        function stopGame() {
+            if (!gameState.gameRunning) return;
+            gameState.gameRunning = false;
+            gameState.gameOver = true;
+            saveHighScore();
+            showGameOver(false, true);
+        }
+
+        function startNewGame() {
+            initGame();
+            document.getElementById('gameOverScreen').classList.remove('show');
+        }
+
+        function goToMenu() {
+            location.reload();
         }
 
         function update(dt) {
@@ -248,6 +453,7 @@
                 if (gameState.pellets.length === 0) {
                     gameState.won = true;
                     gameState.gameRunning = false;
+                    saveHighScore();
                     showGameOver(true);
                 }
 
@@ -296,6 +502,7 @@
                     if (gameState.lives <= 0) {
                         gameState.gameRunning = false;
                         gameState.gameOver = true;
+                        saveHighScore();
                         showGameOver(false);
                     } else {
                         // Reiniciar posición del smiley
@@ -305,19 +512,37 @@
             }
         }
 
-        function showGameOver(won) {
+        function showGameOver(won, stoppedByUser = false) {
             const screen = document.getElementById('gameOverScreen');
             const title = document.getElementById('gameOverTitle');
             const message = document.getElementById('gameOverMessage');
             const finalScore = document.getElementById('finalScore');
+            const displayHighScore = document.getElementById('displayHighScore');
+            const pelletCount = document.getElementById('pelletCount');
+            const newHighScoreAlert = document.getElementById('newHighScoreAlert');
+            const isNewHighScore = saveHighScore();
 
             finalScore.textContent = gameState.score;
+            displayHighScore.textContent = highScore;
+            pelletCount.textContent = gameState.initialPelletCount - gameState.pellets.length;
+
+            if (isNewHighScore) {
+                newHighScoreAlert.style.display = 'block';
+            } else {
+                newHighScoreAlert.style.display = 'none';
+            }
 
             if (won) {
                 title.textContent = '¡GANASTE! 🎉';
                 title.classList.add('win-text');
                 title.classList.remove('lose-text');
                 message.textContent = '¡Comiste todas las bolitas!';
+            } else if (stoppedByUser) {
+                title.textContent = 'JUEGO PAUSADO';
+                title.classList.remove('win-text');
+                title.classList.remove('lose-text');
+                title.style.color = '#ffd700';
+                message.textContent = 'Has salido del juego';
             } else {
                 title.textContent = 'GAME OVER';
                 title.classList.add('lose-text');
@@ -451,10 +676,18 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === ' ') {
                 e.preventDefault();
-                gameState.gamePaused = !gameState.gamePaused;
+                togglePause();
+                updatePauseButton();
             }
             if (e.key === 'r' || e.key === 'R') {
-                initGame();
+                e.preventDefault();
+                if (gameState.gameRunning || gameState.gamePaused) {
+                    initGame();
+                }
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                stopGame();
             }
             if (e.key === 'ArrowUp') {
                 gameState.nextDirection = { x: 0, y: -1 };
