@@ -249,9 +249,139 @@
         .lose-text {
             color: #ff6666;
         }
+
+        .start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            gap: 40px;
+        }
+
+        .start-screen.hidden {
+            display: none;
+        }
+
+        .start-content {
+            text-align: center;
+            background: rgba(0, 0, 0, 0.7);
+            border: 4px solid #ffd700;
+            border-radius: 20px;
+            padding: 50px;
+            max-width: 500px;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+        }
+
+        .start-content h2 {
+            font-size: 3.5em;
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            margin-bottom: 20px;
+        }
+
+        .start-content p {
+            font-size: 1.3em;
+            color: #fff;
+            margin: 15px 0;
+            line-height: 1.6;
+        }
+
+        .high-score-display {
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 25px 0;
+            font-size: 1.2em;
+        }
+
+        .high-score-display strong {
+            color: #ffed4e;
+        }
+
+        .high-score-display .score {
+            color: #00ff00;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .start-button {
+            padding: 20px 60px;
+            font-size: 1.5em;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #000;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .start-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.8);
+        }
+
+        .start-button:active {
+            transform: scale(0.98);
+        }
+
+        .instructions {
+            background: rgba(255, 215, 0, 0.1);
+            border-left: 4px solid #ffd700;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .instructions h4 {
+            color: #ffed4e;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .instructions p {
+            font-size: 0.95em;
+            margin: 8px 0;
+            color: #ddd;
+        }
     </style>
 </head>
 <body>
+    <div class="start-screen" id="startScreen">
+        <div class="start-content">
+            <h2>👾 PACMAN SMILEY 😊</h2>
+            <p>Eet alle balletjes voordat de spoken je pakken!</p>
+
+            <div class="high-score-display">
+                <strong>🏆 Top Score:</strong>
+                <div class="score" id="startHighScore">0</div>
+            </div>
+
+            <button class="start-button" onclick="startGame()">🎮 Speel Nu</button>
+
+            <div class="instructions">
+                <h4>📖 Hoe Spelen:</h4>
+                <p>⬅️ ⬆️ ⬇️ ➡️ - Beweeg de smiley</p>
+                <p>🟠 - Eet alle balletjes voor punten</p>
+                <p>👻 - Vermijd de vier gekleurde spoken</p>
+                <p>❤️ - Je hebt 3 levens</p>
+                <p>SPATIE - Pauze | R - Herstart | ESC - Menu</p>
+            </div>
+        </div>
+    </div>
+
     <div class="game-container">
         <h1>👾 PACMAN SMILEY 😊</h1>
 
@@ -364,7 +494,7 @@
             gameState.gameOver = false;
             gameState.won = false;
 
-            // Spawnear pelotitas en todo el laberinto
+            // Spawn balletjes overal in het speelveld
             for (let y = 0; y < GRID_SIZE; y++) {
                 for (let x = 0; x < GRID_SIZE; x++) {
                     if (Math.random() > 0.15 && !(x === 10 && y === 10)) {
@@ -375,8 +505,18 @@
 
             gameState.initialPelletCount = gameState.pellets.length;
             document.getElementById('gameOverScreen').classList.remove('show');
+            document.getElementById('startScreen').classList.add('hidden');
             updateUI();
             updatePauseButton();
+        }
+
+        function startGame() {
+            initGame();
+        }
+
+        function showStartScreen() {
+            document.getElementById('startScreen').classList.remove('hidden');
+            document.getElementById('startHighScore').textContent = highScore;
         }
 
         function updateUI() {
@@ -415,7 +555,10 @@
         }
 
         function goToMenu() {
-            location.reload();
+            gameState.gameRunning = false;
+            gameState.gamePaused = false;
+            document.getElementById('gameOverScreen').classList.remove('show');
+            showStartScreen();
         }
 
         function update(dt) {
@@ -707,12 +850,12 @@
             }
         });
 
-        // Iniciar
-        initGame();
+        // Initializatie
+        showStartScreen();
         let lastTime = Date.now();
         gameLoop(0);
 
-        // Delta time actualizado
+        // Delta time update
         setInterval(() => {
             const now = Date.now();
             const dt = (now - lastTime) / 1000;
