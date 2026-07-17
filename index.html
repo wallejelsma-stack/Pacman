@@ -446,19 +446,47 @@
         const PELLET_SIZE = 4;
         const SMILEY_SIZE = 24;
         const GHOST_SIZE = 24;
-        const MOVE_SPEED = 0.1;
+        const MOVE_SPEED = 2.5;
         const STORAGE_KEY = 'pacmanSmileyHighScore';
 
+        // Labyrint: 0 = gang, 1 = muur
+        const MAZE = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,1,1,1,0,1,1,0,1,1,1,0,1,1,0,1],
+            [1,0,1,1,0,1,1,1,0,0,0,0,1,1,1,0,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
+            [1,1,1,0,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1],
+            [1,1,1,0,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,0,1,1,1,1,1,1,0,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,0,1,1,1,0,1,1,1,1,1,1,0,1,1,1,0,1,1],
+            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        ];
+
+        function isWall(x, y) {
+            if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return true;
+            return MAZE[y][x] === 1;
+        }
+
         let gameState = {
-            smiley: { x: 10, y: 10 },
+            smiley: { x: 10, y: 15 },
             direction: { x: 0, y: 0 },
             nextDirection: { x: 0, y: 0 },
             pellets: [],
             ghosts: [
-                { x: 2, y: 2, color: '#ff0000', dx: 1, dy: 0 },
-                { x: 17, y: 2, color: '#ff69b4', dx: -1, dy: 0 },
-                { x: 2, y: 17, color: '#00ffff', dx: 0, dy: 1 },
-                { x: 17, y: 17, color: '#ffb347', dx: 0, dy: -1 }
+                { x: 1, y: 1, color: '#ff0000', dx: 1, dy: 0 },
+                { x: 18, y: 1, color: '#ff69b4', dx: -1, dy: 0 },
+                { x: 1, y: 18, color: '#00ffff', dx: 0, dy: 1 },
+                { x: 18, y: 18, color: '#ffb347', dx: 0, dy: -1 }
             ],
             score: 0,
             lives: 3,
@@ -482,7 +510,7 @@
         }
 
         function initGame() {
-            gameState.smiley = { x: 10, y: 10 };
+            gameState.smiley = { x: 10, y: 15 };
             gameState.direction = { x: 0, y: 0 };
             gameState.nextDirection = { x: 0, y: 0 };
             gameState.pellets = [];
@@ -494,10 +522,10 @@
             gameState.gameOver = false;
             gameState.won = false;
 
-            // Spawn balletjes overal in het speelveld
+            // Spawn balletjes alleen in gangen
             for (let y = 0; y < GRID_SIZE; y++) {
                 for (let x = 0; x < GRID_SIZE; x++) {
-                    if (Math.random() > 0.15 && !(x === 10 && y === 10)) {
+                    if (!isWall(x, y) && !(x === 10 && y === 10)) {
                         gameState.pellets.push({ x, y });
                     }
                 }
@@ -567,23 +595,24 @@
             gameState.moveTimer += dt;
 
             if (gameState.moveTimer >= MOVE_SPEED) {
-                // Actualizar dirección
+                // Update direction
                 if (gameState.nextDirection.x !== 0 || gameState.nextDirection.y !== 0) {
-                    gameState.direction = { ...gameState.nextDirection };
+                    const nextX = gameState.smiley.x + gameState.nextDirection.x;
+                    const nextY = gameState.smiley.y + gameState.nextDirection.y;
+                    if (!isWall(nextX, nextY)) {
+                        gameState.direction = { ...gameState.nextDirection };
+                    }
                 }
 
-                // Mover smiley
+                // Move smiley
                 let newX = gameState.smiley.x + gameState.direction.x;
                 let newY = gameState.smiley.y + gameState.direction.y;
 
-                // Wrapping (salir por un lado entra por el otro)
-                if (newX < 0) newX = GRID_SIZE - 1;
-                if (newX >= GRID_SIZE) newX = 0;
-                if (newY < 0) newY = GRID_SIZE - 1;
-                if (newY >= GRID_SIZE) newY = 0;
-
-                gameState.smiley.x = newX;
-                gameState.smiley.y = newY;
+                // Check wall collision
+                if (!isWall(newX, newY)) {
+                    gameState.smiley.x = newX;
+                    gameState.smiley.y = newY;
+                }
 
                 // Revisar colisión con pelotitas
                 const pelletIndex = gameState.pellets.findIndex(p => p.x === gameState.smiley.x && p.y === gameState.smiley.y);
@@ -614,24 +643,41 @@
                 let newX = ghost.x + ghost.dx;
                 let newY = ghost.y + ghost.dy;
 
-                // Wrapping para fantasmas
-                if (newX < 0) newX = GRID_SIZE - 1;
-                if (newX >= GRID_SIZE) newX = 0;
-                if (newY < 0) newY = GRID_SIZE - 1;
-                if (newY >= GRID_SIZE) newY = 0;
-
-                ghost.x = newX;
-                ghost.y = newY;
-
-                // Cambiar dirección aleatoriamente a veces
-                if (Math.random() < 0.02) {
+                // Check wall collision - if wall ahead, change direction
+                if (isWall(newX, newY)) {
                     const directions = [
                         { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
                         { dx: 0, dy: 1 }, { dx: 0, dy: -1 }
                     ];
-                    const newDir = directions[Math.floor(Math.random() * directions.length)];
-                    ghost.dx = newDir.dx;
-                    ghost.dy = newDir.dy;
+                    let validDir = null;
+                    for (let dir of directions) {
+                        if (!isWall(ghost.x + dir.dx, ghost.y + dir.dy)) {
+                            validDir = dir;
+                            break;
+                        }
+                    }
+                    if (validDir) {
+                        ghost.dx = validDir.dx;
+                        ghost.dy = validDir.dy;
+                        newX = ghost.x + ghost.dx;
+                        newY = ghost.y + ghost.dy;
+                    }
+                } else {
+                    // Random direction change sometimes
+                    if (Math.random() < 0.03) {
+                        const directions = [
+                            { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
+                            { dx: 0, dy: 1 }, { dx: 0, dy: -1 }
+                        ];
+                        const newDir = directions[Math.floor(Math.random() * directions.length)];
+                        ghost.dx = newDir.dx;
+                        ghost.dy = newDir.dy;
+                    }
+                }
+
+                if (!isWall(newX, newY)) {
+                    ghost.x = newX;
+                    ghost.y = newY;
                 }
             });
         }
@@ -648,8 +694,8 @@
                         saveHighScore();
                         showGameOver(false);
                     } else {
-                        // Reiniciar posición del smiley
-                        gameState.smiley = { x: 10, y: 10 };
+                        // Reset smiley position
+                        gameState.smiley = { x: 10, y: 15 };
                     }
                 }
             }
@@ -697,12 +743,22 @@
         }
 
         function draw() {
-            // Fondo
+            // Background
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Grid
-            ctx.strokeStyle = '#222';
+            // Draw maze walls
+            ctx.fillStyle = '#0066ff';
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    if (MAZE[y][x] === 1) {
+                        ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    }
+                }
+            }
+
+            // Grid lines
+            ctx.strokeStyle = '#1a1a2e';
             ctx.lineWidth = 0.5;
             for (let i = 0; i <= GRID_SIZE; i++) {
                 ctx.beginPath();
@@ -716,7 +772,7 @@
                 ctx.stroke();
             }
 
-            // Pelotitas
+            // Pellets
             ctx.fillStyle = '#ffb347';
             gameState.pellets.forEach(pellet => {
                 const centerX = pellet.x * CELL_SIZE + CELL_SIZE / 2;
