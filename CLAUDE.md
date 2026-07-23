@@ -1,22 +1,67 @@
-# 👾 Pacman Smiley Game - Project Context (CLAUDE.md)
+# CLAUDE.md
 
-```
-╔════════════════════════════════════════════════════════════════╗
-║                  PACMAN SMILEY GAME PROJECT                    ║
-║         Claude AI Assisted Development Context                 ║
-╚════════════════════════════════════════════════════════════════╝
-```
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ---
 
-## 📋 Project Overview
+## 👾 Pacman Smiley Game - Project Context
 
 **Project Name**: Pacman Smiley - Come las Bolitas  
 **Version**: 1.0.0  
 **Status**: ✅ Production Ready  
 **Technology**: HTML5 Canvas + Vanilla JavaScript  
 **Repository**: wallejelsma-stack/pacman  
-**Primary Branch**: claude/pacman-smiley-game-fvxyii  
+**Primary Development Branch**: claude/claud-md-build-pttkcg  
+
+---
+
+## 🚀 Developer Quick Start
+
+### Run the Game
+```bash
+# Option 1: Direct open
+# Simply open index.html in a web browser
+
+# Option 2: Local HTTP server (recommended)
+cd /home/user/Pacman
+python3 -m http.server 8080
+# Then open http://localhost:8080/index.html
+```
+
+### Codebase Structure
+The entire game lives in **one file**: `index.html` containing:
+- **HTML** (lines 362-407): Game container, canvas, UI screens
+- **CSS** (lines 7-359): All visual styles
+- **JavaScript** (lines 440-922): Game logic, state, rendering
+
+### Core Game Loop (lines 868-872)
+```javascript
+gameLoop(dt) {
+  update(dt)  // Process input, move entities, detect collisions
+  draw()      // Render canvas
+  requestAnimationFrame(gameLoop)  // ~60 FPS
+}
+```
+
+### Game State (line 480)
+Central `gameState` object holds:
+- `smiley`: Player position {x, y} on 20×20 grid
+- `direction`, `nextDirection`: Movement vectors
+- `pellets`: Array of remaining pellets
+- `ghosts`: Array of 4 enemies with colors and velocities
+- `score`, `lives`: Game metrics
+- `moveTimer`: Tracks grid-based movement timing
+
+### Key Functions Reference
+| Function | Lines | Purpose |
+|----------|-------|---------|
+| `initGame()` | 512–539 | Reset state, populate pellets |
+| `update(dt)` | 592–639 | Move smiley, ghosts; check collisions |
+| `moveGhosts()` | 641–683 | Ghost AI with wall avoidance |
+| `checkGhostCollisions()` | 685–702 | Detect smiley-ghost contact |
+| `draw()` | 745–802 | Render maze, entities, UI |
+| `drawSmiley(x, y)` | 804–832 | Yellow smiley face |
+| `drawGhost(x, y, color)` | 834–866 | Colored ghost shape |
 
 ---
 
@@ -54,6 +99,55 @@ index.html
   └─ Sin dependencias externas
   └─ Mejor rendimiento y compatibilidad
 ```
+
+---
+
+## 🔧 Code Architecture Deep Dive
+
+### Game Constants (lines 444–450)
+```javascript
+GRID_SIZE = 20          // 20×20 cell maze
+CELL_SIZE = 30          // Each cell is 30×30 pixels (600px canvas)
+MOVE_SPEED = 2.5        // Milliseconds between grid moves (timer-based)
+PELLET_SIZE = 4         // Radius for rendering pellets
+SMILEY_SIZE = 24        // Character size in pixels
+GHOST_SIZE = 24
+STORAGE_KEY = 'pacmanSmileyHighScore'  // localStorage key
+```
+
+### Maze System (lines 453–478)
+- `MAZE`: 20×20 array where 0=corridor, 1=wall
+- `isWall(x, y)`: Fast O(1) collision check
+- Pellets spawn only in corridors (line 528)
+
+### Movement System
+- **Timer-based**, not frame-based (line 597: `if (moveTimer >= MOVE_SPEED)`)
+- Smiley has **direction buffering** (lines 599–605): stores next direction, applies when legal
+- Ghosts change direction randomly (line 667: `Math.random() < 0.03`) or when hitting walls
+
+### Collision Detection (all grid-based, O(1))
+- **Pellets** (line 618): `findIndex(p => p.x === smiley.x && p.y === smiley.y)`
+- **Walls** (line 612): `isWall()` prevents movement
+- **Ghosts** (line 687): Direct equality check
+
+### Data Persistence
+- High score stored in localStorage (line 501)
+- Checked on page load, updated on game end (lines 503–510)
+- Value persists across browser sessions
+
+### Rendering Pipeline (draw function, lines 745–802)
+1. Clear canvas black (745–748)
+2. Draw maze walls in blue (750–758)
+3. Draw grid lines (760–773)
+4. Draw pellets as orange circles (775–783)
+5. Draw smiley (785–786)
+6. Draw ghosts (788–791)
+7. Overlay pause text if paused (793–801)
+
+### UI Management
+- Stats update every move (line 637: `updateUI()`)
+- Game-over screen shown via CSS class toggle (line 742: `classList.add('show')`)
+- Start screen shown/hidden similarly
 
 ---
 
@@ -385,6 +479,72 @@ Optimization Notes:
 
 ---
 
+## 📋 Common Development Tasks
+
+### Adding a New Feature
+
+1. **Modify `gameState`**: Add new properties if needed
+2. **Update logic**: Modify `update()` or create new functions
+3. **Add rendering**: Write code in `draw()` or new draw function
+4. **Update UI**: Modify `updateUI()` if displaying info
+
+### Changing Game Difficulty
+
+Difficulty is controlled by `MOVE_SPEED` (line 449). Smaller = faster.
+```javascript
+MOVE_SPEED = 1.5  // Harder
+MOVE_SPEED = 5.0  // Easier
+```
+
+Ghost difficulty is in `moveGhosts()` (line 667): `Math.random() < 0.03` = 3% chance to turn.
+
+### Adding a New Ghost
+In `gameState.ghosts` initialization (lines 485–490), add to array:
+```javascript
+{ x: startX, y: startY, color: '#hexcolor', dx: 0, dy: 1 }
+```
+
+### Tracking Game Statistics
+Add properties to `gameState`, update in `update()` function, display via `updateUI()`.
+
+### Changing Colors
+- Smiley: line 810 (`ctx.fillStyle = '#ffd700'`)
+- Pellets: line 776 (`ctx.fillStyle = '#ffb347'`)
+- Maze walls: line 751 (`ctx.fillStyle = '#0066ff'`)
+- Ghost: Each ghost has `color` property (line 840)
+
+### Testing Checklist
+```
+□ Game initializes without errors (check DevTools Console)
+□ Smiley moves with arrow keys, respects walls
+□ Pellets eaten and score updates (+10 per pellet)
+□ Ghosts move and change direction randomly
+□ Collision with ghost loses life (or game over if lives=0)
+□ All pellets eaten = win screen
+□ Pause/resume works (Space key)
+□ Restart works (R key)
+□ Menu return works (Escape key)
+□ High score persists after reload
+□ No console errors
+□ 60 FPS (check DevTools Performance)
+```
+
+### Debugging Tips
+1. **Inspect game state**: In DevTools console, type `gameState`
+2. **Watch movement**: Add `console.log()` in `update()` or `moveGhosts()`
+3. **Check collisions**: Log `gameState.smiley`, `ghost`, `pellets`
+4. **Canvas debugging**: Use Chrome DevTools Canvas debugger
+
+### Performance Optimization
+- Grid-based collision is O(1) — no performance issue there
+- Canvas rendering is the bottleneck; optimize by:
+  - Reducing draw calls (combine shapes)
+  - Using `clearRect()` efficiently
+  - Avoiding frequent DOM updates
+- Movement is timer-based (not delta-time optimized yet) — acceptable for this scale
+
+---
+
 ## 🔐 Security Considerations
 
 ### Implemented Security
@@ -478,26 +638,23 @@ function saveHighScore(score) {
 
 ---
 
-## 🐛 Known Issues & Limitations
+## 🐛 Known Issues & Implementation Notes
 
-### Current Limitations
-```
-✓ Sin efectos de sonido (intencional)
-✓ Un solo jugador
-✓ Sin escalado de dificultad automático
-✓ Sin controles táctiles para móvil
-✓ Sin persistencia de puntuación máxima
-✓ Sin multijugador
-✓ Sin IA inteligente de fantasmas (movimiento aleatorio)
-```
+### Current Implementation Status
+- ✅ High score persistence (localStorage implemented, line 501)
+- ⚠️ Ghost AI: Random-based only, no pathfinding (line 667)
+- ⚠️ No sound (intentional — use Web Audio API to add)
+- ⚠️ Single player only
+- ⚠️ No difficulty scaling (modify MOVE_SPEED to test)
+- ⚠️ No touch controls (keyboard only)
 
-### Workarounds & Improvements
-- Agregar localStorage para puntuación máxima
-- Implementar event listeners táctiles
-- Agregar Web Audio API para sonidos
-- Crear selector de dificultad
-- Implementar WebSocket para multijugador
-- Mejorar AI de fantasmas con pathfinding
+### Potential Improvements
+- **Sound**: Use Web Audio API or HTMLAudioElement in `update()`
+- **Touch controls**: Add touch event listeners, map to direction
+- **Difficulty modes**: Create selector on start screen, adjust MOVE_SPEED
+- **Ghost AI**: Implement BFS pathfinding toward smiley
+- **Power-ups**: Add to `gameState.powerups`, check collision in `update()`
+- **Multiple levels**: Extend MAZE array or procedurally generate
 
 ---
 
@@ -673,8 +830,8 @@ Este proyecto enseña:
 Hecho con 💚 por la Comunidad de Pacman Smiley
 
 ```
-Última Actualización: 2026-07-17
-Siguiente Revisión: Cuando se agreguen features
+Last Updated: 2026-07-23
+Developer Edition — Technical Reference for Claude Code
 ```
 
 </div>
