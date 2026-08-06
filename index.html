@@ -720,40 +720,43 @@
 
         function moveGhosts() {
             gameState.ghosts.forEach(ghost => {
-                let newX = ghost.x + ghost.dx;
-                let newY = ghost.y + ghost.dy;
+                const directions = [
+                    { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
+                    { dx: 0, dy: 1 }, { dx: 0, dy: -1 }
+                ];
 
-                if (isWall(newX, newY)) {
-                    const directions = [
-                        { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
-                        { dx: 0, dy: 1 }, { dx: 0, dy: -1 }
-                    ];
-                    let validDir = null;
-                    for (let dir of directions) {
-                        if (!isWall(ghost.x + dir.dx, ghost.y + dir.dy)) {
-                            validDir = dir;
-                            break;
-                        }
-                    }
-                    if (validDir) {
-                        ghost.dx = validDir.dx;
-                        ghost.dy = validDir.dy;
-                        newX = ghost.x + ghost.dx;
-                        newY = ghost.y + ghost.dy;
-                    }
-                } else {
-                    if (Math.random() < 0.03) {
-                        const directions = [
-                            { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
-                            { dx: 0, dy: 1 }, { dx: 0, dy: -1 }
-                        ];
-                        const newDir = directions[Math.floor(Math.random() * directions.length)];
+                // Veel hogere willekeurigheid - veel vaker van richting veranderen
+                if (Math.random() < 0.15) {  // 15% kans per frame = veel chaotischer!
+                    const validDirs = directions.filter(dir =>
+                        !isWall(ghost.x + dir.dx, ghost.y + dir.dy)
+                    );
+
+                    if (validDirs.length > 0) {
+                        const newDir = validDirs[Math.floor(Math.random() * validDirs.length)];
                         ghost.dx = newDir.dx;
                         ghost.dy = newDir.dy;
                     }
                 }
 
-                // Don't move if it would go into a wall
+                let newX = ghost.x + ghost.dx;
+                let newY = ghost.y + ghost.dy;
+
+                // Als er een muur in de weg is, dwing richtingswisseling af
+                if (isWall(newX, newY)) {
+                    const validDirs = directions.filter(dir =>
+                        !isWall(ghost.x + dir.dx, ghost.y + dir.dy)
+                    );
+
+                    if (validDirs.length > 0) {
+                        const newDir = validDirs[Math.floor(Math.random() * validDirs.length)];
+                        ghost.dx = newDir.dx;
+                        ghost.dy = newDir.dy;
+                        newX = ghost.x + ghost.dx;
+                        newY = ghost.y + ghost.dy;
+                    }
+                }
+
+                // Beweeg naar nieuwe positie
                 if (!isWall(newX, newY)) {
                     ghost.x = newX;
                     ghost.y = newY;
