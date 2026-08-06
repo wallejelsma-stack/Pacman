@@ -19,6 +19,7 @@
             background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             color: #fff;
+            overflow: hidden;
         }
 
         .game-container {
@@ -266,7 +267,7 @@
         }
 
         .start-screen.hidden {
-            display: none;
+            display: none !important;
         }
 
         .start-content {
@@ -369,7 +370,7 @@
                 <div class="score" id="startHighScore">0</div>
             </div>
 
-            <button class="start-button" onclick="startGame()">🎮 Speel Nu</button>
+            <button class="start-button" id="startBtn">🎮 Speel Nu</button>
 
             <div class="instructions">
                 <h4>📖 Hoe Spelen:</h4>
@@ -446,10 +447,11 @@
         const PELLET_SIZE = 4;
         const SMILEY_SIZE = 24;
         const GHOST_SIZE = 24;
-        const MOVE_SPEED = 2.5;
+        const MOVE_SPEED = 0.5;  // 5x faster now!
         const STORAGE_KEY = 'pacmanSmileyHighScore';
+        const POWER_UP_SIZE = 12;
+        const POWER_UP_DURATION = 8;  // seconds
 
-        // Labyrint: 0 = gang, 1 = muur
         const MAZE = [
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
             [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
@@ -470,6 +472,7 @@
             [1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1],
             [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
         ];
 
         function isWall(x, y) {
@@ -482,6 +485,12 @@
             direction: { x: 0, y: 0 },
             nextDirection: { x: 0, y: 0 },
             pellets: [],
+            powerUps: [
+                { x: 2, y: 1, eaten: false },      // Top-left
+                { x: 17, y: 1, eaten: false },     // Top-right
+                { x: 2, y: 17, eaten: false },     // Bottom-left
+                { x: 17, y: 17, eaten: false }     // Bottom-right
+            ],
             ghosts: [
                 { x: 1, y: 1, color: '#ff0000', dx: 1, dy: 0 },
                 { x: 18, y: 1, color: '#ff69b4', dx: -1, dy: 0 },
@@ -493,9 +502,14 @@
             gameRunning: false,
             gamePaused: false,
             moveTimer: 0,
+            ghostMoveTimer: 0,
             gameOver: false,
             won: false,
-            initialPelletCount: 0
+            initialPelletCount: 0,
+            powerUpActive: false,
+            powerUpTimer: 0,
+            smileyHit: false,
+            hitTimer: 0
         };
 
         let highScore = localStorage.getItem(STORAGE_KEY) ? parseInt(localStorage.getItem(STORAGE_KEY)) : 0;
@@ -519,10 +533,22 @@
             gameState.gameRunning = true;
             gameState.gamePaused = false;
             gameState.moveTimer = 0;
+            gameState.ghostMoveTimer = 0;
             gameState.gameOver = false;
             gameState.won = false;
+            gameState.powerUpActive = false;
+            gameState.powerUpTimer = 0;
+            gameState.smileyHit = false;
+            gameState.hitTimer = 0;
 
-            // Spawn balletjes alleen in gangen
+            // Reset power-ups
+            gameState.powerUps = [
+                { x: 2, y: 1, eaten: false },      // Top-left corridor
+                { x: 17, y: 1, eaten: false },     // Top-right corridor
+                { x: 2, y: 17, eaten: false },     // Bottom-left corridor
+                { x: 17, y: 17, eaten: false }     // Bottom-right corridor
+            ];
+
             for (let y = 0; y < GRID_SIZE; y++) {
                 for (let x = 0; x < GRID_SIZE; x++) {
                     if (!isWall(x, y) && !(x === 10 && y === 10)) {
@@ -548,10 +574,24 @@
         }
 
         function updateUI() {
-            document.getElementById('score').textContent = gameState.score;
-            document.getElementById('highScore').textContent = highScore;
-            document.getElementById('pellets').textContent = gameState.pellets.length;
-            document.getElementById('lives').textContent = gameState.lives;
+            try {
+                const scoreEl = document.getElementById('score');
+                const highScoreEl = document.getElementById('highScore');
+                const pelletsEl = document.getElementById('pellets');
+                const livesEl = document.getElementById('lives');
+
+                if (scoreEl) scoreEl.textContent = gameState.score;
+                if (highScoreEl) highScoreEl.textContent = highScore;
+                if (pelletsEl) pelletsEl.textContent = gameState.pellets.length;
+                if (livesEl) {
+                    livesEl.textContent = gameState.lives;
+                    console.log(`UI Updated: Lives = ${gameState.lives}`);
+                } else {
+                    console.error('Lives element NOT found!');
+                }
+            } catch (err) {
+                console.error('updateUI error:', err);
+            }
         }
 
         function updatePauseButton() {
@@ -592,50 +632,88 @@
         function update(dt) {
             if (!gameState.gameRunning || gameState.gamePaused || gameState.gameOver || gameState.won) return;
 
+            // Update hit animation timer
+            if (gameState.smileyHit) {
+                gameState.hitTimer -= dt;
+                if (gameState.hitTimer <= 0) {
+                    gameState.smileyHit = false;
+                    gameState.hitTimer = 0;
+                    gameState.smiley = { x: 10, y: 15 };  // Respawn
+                }
+            }
+
+            // Update power-up timer
+            if (gameState.powerUpActive) {
+                gameState.powerUpTimer -= dt;
+                if (gameState.powerUpTimer <= 0) {
+                    gameState.powerUpActive = false;
+                    gameState.powerUpTimer = 0;
+                }
+            }
+
             gameState.moveTimer += dt;
+            gameState.ghostMoveTimer += dt;
 
             if (gameState.moveTimer >= MOVE_SPEED) {
-                // Update direction
-                if (gameState.nextDirection.x !== 0 || gameState.nextDirection.y !== 0) {
-                    const nextX = gameState.smiley.x + gameState.nextDirection.x;
-                    const nextY = gameState.smiley.y + gameState.nextDirection.y;
-                    if (!isWall(nextX, nextY)) {
-                        gameState.direction = { ...gameState.nextDirection };
+                // Only move smiley if NOT hit
+                if (!gameState.smileyHit) {
+                    // Update direction
+                    if (gameState.nextDirection.x !== 0 || gameState.nextDirection.y !== 0) {
+                        const nextX = gameState.smiley.x + gameState.nextDirection.x;
+                        const nextY = gameState.smiley.y + gameState.nextDirection.y;
+                        if (!isWall(nextX, nextY)) {
+                            gameState.direction = { ...gameState.nextDirection };
+                        }
+                    }
+
+                    // Move smiley
+                    let newX = gameState.smiley.x + gameState.direction.x;
+                    let newY = gameState.smiley.y + gameState.direction.y;
+
+                    if (!isWall(newX, newY)) {
+                        gameState.smiley.x = newX;
+                        gameState.smiley.y = newY;
+                    }
+
+                    // Check pellets
+                    const pelletIndex = gameState.pellets.findIndex(p => p.x === gameState.smiley.x && p.y === gameState.smiley.y);
+                    if (pelletIndex !== -1) {
+                        gameState.pellets.splice(pelletIndex, 1);
+                        gameState.score += 10;
+                    }
+
+                    // Check power-ups
+                    const powerUpIndex = gameState.powerUps.findIndex(p => p.x === gameState.smiley.x && p.y === gameState.smiley.y && !p.eaten);
+                    if (powerUpIndex !== -1) {
+                        gameState.powerUps[powerUpIndex].eaten = true;
+                        gameState.powerUpActive = true;
+                        gameState.powerUpTimer = POWER_UP_DURATION;
+                        gameState.score += 50;
+                    }
+
+                    // Check win
+                    if (gameState.pellets.length === 0) {
+                        gameState.won = true;
+                        gameState.gameRunning = false;
+                        saveHighScore();
+                        showGameOver(true);
                     }
                 }
 
-                // Move smiley
-                let newX = gameState.smiley.x + gameState.direction.x;
-                let newY = gameState.smiley.y + gameState.direction.y;
-
-                // Check wall collision
-                if (!isWall(newX, newY)) {
-                    gameState.smiley.x = newX;
-                    gameState.smiley.y = newY;
+                // Move ghosts (with power-up slowdown)
+                const ghostSpeed = gameState.powerUpActive ? MOVE_SPEED * 5 : MOVE_SPEED;
+                if (gameState.ghostMoveTimer >= ghostSpeed) {
+                    moveGhosts();
+                    gameState.ghostMoveTimer = 0;
                 }
-
-                // Revisar colisión con pelotitas
-                const pelletIndex = gameState.pellets.findIndex(p => p.x === gameState.smiley.x && p.y === gameState.smiley.y);
-                if (pelletIndex !== -1) {
-                    gameState.pellets.splice(pelletIndex, 1);
-                    gameState.score += 10;
-                }
-
-                // Revisar si ganó (todas las pelotitas comidas)
-                if (gameState.pellets.length === 0) {
-                    gameState.won = true;
-                    gameState.gameRunning = false;
-                    saveHighScore();
-                    showGameOver(true);
-                }
-
-                // Mover fantasmas y revisar colisiones
-                moveGhosts();
-                checkGhostCollisions();
 
                 gameState.moveTimer = 0;
                 updateUI();
             }
+
+            // CHECK COLLISION EVERY FRAME (not just when movement happens!)
+            // This is critical so ghosts can't pass through smiley
+            checkGhostCollisions();
         }
 
         function moveGhosts() {
@@ -643,7 +721,6 @@
                 let newX = ghost.x + ghost.dx;
                 let newY = ghost.y + ghost.dy;
 
-                // Check wall collision - if wall ahead, change direction
                 if (isWall(newX, newY)) {
                     const directions = [
                         { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
@@ -663,7 +740,6 @@
                         newY = ghost.y + ghost.dy;
                     }
                 } else {
-                    // Random direction change sometimes
                     if (Math.random() < 0.03) {
                         const directions = [
                             { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
@@ -683,19 +759,44 @@
         }
 
         function checkGhostCollisions() {
-            for (let ghost of gameState.ghosts) {
-                if (ghost.x === gameState.smiley.x && ghost.y === gameState.smiley.y) {
-                    gameState.lives--;
-                    updateUI();
+            for (let i = 0; i < gameState.ghosts.length; i++) {
+                const ghost = gameState.ghosts[i];
 
-                    if (gameState.lives <= 0) {
-                        gameState.gameRunning = false;
-                        gameState.gameOver = true;
-                        saveHighScore();
-                        showGameOver(false);
+                if (ghost.x === gameState.smiley.x && ghost.y === gameState.smiley.y) {
+                    console.log(`✓ COLLISION DETECTED! Ghost ${i} at (${ghost.x},${ghost.y}) with Smiley. PowerUp: ${gameState.powerUpActive}`);
+
+                    if (gameState.powerUpActive) {
+                        // Smiley eats the ghost!
+                        console.log(`Smiley ate ghost ${i}!`);
+                        gameState.score += 200;
+                        // Respawn ghost away from smiley
+                        let validSpawn = false;
+                        while (!validSpawn) {
+                            ghost.x = Math.floor(Math.random() * 18) + 1;
+                            ghost.y = Math.floor(Math.random() * 18) + 1;
+                            // Make sure ghost doesn't spawn in wall or at smiley position
+                            if (!isWall(ghost.x, ghost.y) &&
+                                !(ghost.x === gameState.smiley.x && ghost.y === gameState.smiley.y)) {
+                                validSpawn = true;
+                            }
+                        }
                     } else {
-                        // Reset smiley position
-                        gameState.smiley = { x: 10, y: 15 };
+                        // Ghost catches smiley
+                        if (!gameState.smileyHit) {  // Only trigger once per hit
+                            console.log(`Ghost ${i} caught smiley! Lives before: ${gameState.lives}`);
+                            gameState.lives--;
+                            gameState.smileyHit = true;
+                            gameState.hitTimer = 2.4;  // Animation duration (2x slower fade)
+                            console.log(`Lives after: ${gameState.lives}`);
+                            updateUI();
+
+                            if (gameState.lives <= 0) {
+                                gameState.gameRunning = false;
+                                gameState.gameOver = true;
+                                saveHighScore();
+                                showGameOver(false);
+                            }
+                        }
                     }
                 }
             }
@@ -743,11 +844,9 @@
         }
 
         function draw() {
-            // Background
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw maze walls
             ctx.fillStyle = '#0066ff';
             for (let y = 0; y < GRID_SIZE; y++) {
                 for (let x = 0; x < GRID_SIZE; x++) {
@@ -757,22 +856,6 @@
                 }
             }
 
-            // Grid lines
-            ctx.strokeStyle = '#1a1a2e';
-            ctx.lineWidth = 0.5;
-            for (let i = 0; i <= GRID_SIZE; i++) {
-                ctx.beginPath();
-                ctx.moveTo(i * CELL_SIZE, 0);
-                ctx.lineTo(i * CELL_SIZE, canvas.height);
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.moveTo(0, i * CELL_SIZE);
-                ctx.lineTo(canvas.width, i * CELL_SIZE);
-                ctx.stroke();
-            }
-
-            // Pellets
             ctx.fillStyle = '#ffb347';
             gameState.pellets.forEach(pellet => {
                 const centerX = pellet.x * CELL_SIZE + CELL_SIZE / 2;
@@ -782,15 +865,28 @@
                 ctx.fill();
             });
 
-            // Smiley (Pacman)
+            // Power-ups
+            gameState.powerUps.forEach(powerUp => {
+                if (!powerUp.eaten) {
+                    const centerX = powerUp.x * CELL_SIZE + CELL_SIZE / 2;
+                    const centerY = powerUp.y * CELL_SIZE + CELL_SIZE / 2;
+                    const pulse = Math.sin(Date.now() / 200) * 3 + POWER_UP_SIZE;
+                    ctx.fillStyle = '#ff00ff';
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, pulse, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#ff00ff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            });
+
             drawSmiley(gameState.smiley.x, gameState.smiley.y);
 
-            // Fantasmas
             gameState.ghosts.forEach(ghost => {
                 drawGhost(ghost.x, ghost.y, ghost.color);
             });
 
-            // Status van pauze
             if (gameState.gamePaused) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -806,29 +902,98 @@
             const centerY = gridY * CELL_SIZE + CELL_SIZE / 2;
             const radius = SMILEY_SIZE / 2;
 
-            // Cabeza amarilla
-            ctx.fillStyle = '#ffd700';
+            // Calculate hit animation progress (0 = happy, 1 = sad -> fade)
+            let hitProgress = 0;
+            let opacity = 1;
+            if (gameState.smileyHit) {
+                hitProgress = 1 - (gameState.hitTimer / 2.4);  // 0 to 1 (with 2.4s duration)
+                // First 50% show sad face, last 50% fade out
+                if (hitProgress > 0.5) {
+                    opacity = 1 - ((hitProgress - 0.5) / 0.5);  // Fade from 1 to 0
+                }
+            }
+
+            // Change color when powered up or hit
+            let smileyColor = '#ffd700';
+            if (gameState.smileyHit) {
+                smileyColor = `rgb(255, ${215 - Math.floor(hitProgress * 50)}, 0)`;  // Fade to orange-red
+            } else if (gameState.powerUpActive) {
+                smileyColor = '#ff00ff';
+            }
+
+            // Apply opacity for fade effect
+            ctx.globalAlpha = opacity;
+
+            ctx.fillStyle = smileyColor;
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
             ctx.fill();
 
-            // Ojo izquierdo
+            // Draw power-up aura when active
+            if (gameState.powerUpActive) {
+                ctx.strokeStyle = '#ff00ff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius + 5, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Draw eyes
             ctx.fillStyle = '#000';
             ctx.beginPath();
             ctx.arc(centerX - 6, centerY - 4, 2.5, 0, Math.PI * 2);
             ctx.fill();
 
-            // Ojo derecho
             ctx.beginPath();
             ctx.arc(centerX + 6, centerY - 4, 2.5, 0, Math.PI * 2);
             ctx.fill();
 
-            // Boca sonriente
+            // Draw mouth - happy or sad
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(centerX, centerY + 2, 5, 0, Math.PI);
-            ctx.stroke();
+
+            if (gameState.smileyHit && hitProgress > 0.4) {
+                // Sad mouth (upside down arc)
+                ctx.arc(centerX, centerY + 4, 5, 0, Math.PI);
+                ctx.stroke();
+
+                // Tears throughout animation - made more visible
+                if (hitProgress > 0.4) {
+                    const tearOpacity = Math.min(1, (hitProgress - 0.4) * 2);
+
+                    // Draw left tear
+                    ctx.strokeStyle = `rgba(100, 150, 255, ${tearOpacity})`;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - 6, centerY - 3);
+                    ctx.lineTo(centerX - 6, centerY + 4);
+                    ctx.stroke();
+
+                    // Draw right tear
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + 6, centerY - 3);
+                    ctx.lineTo(centerX + 6, centerY + 4);
+                    ctx.stroke();
+
+                    // Draw tear drops at the bottom
+                    ctx.fillStyle = `rgba(100, 150, 255, ${tearOpacity})`;
+                    ctx.beginPath();
+                    ctx.arc(centerX - 6, centerY + 5, 2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.arc(centerX + 6, centerY + 5, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            } else {
+                // Happy mouth (normal arc)
+                ctx.arc(centerX, centerY + 2, 5, 0, Math.PI);
+                ctx.stroke();
+            }
+
+            // Reset opacity for other drawings
+            ctx.globalAlpha = 1;
         }
 
         function drawGhost(gridX, gridY, color) {
@@ -837,16 +1002,12 @@
             const size = GHOST_SIZE / 2;
 
             ctx.fillStyle = color;
-
-            // Cuerpo
             ctx.fillRect(centerX - size, centerY - size, size * 2, size * 2);
 
-            // Cabeza redondeada
             ctx.beginPath();
             ctx.arc(centerX, centerY - size, size, Math.PI, 0);
             ctx.fill();
 
-            // Ojos
             ctx.fillStyle = '#fff';
             ctx.beginPath();
             ctx.arc(centerX - 4, centerY - 3, 2, 0, Math.PI * 2);
@@ -855,7 +1016,6 @@
             ctx.arc(centerX + 4, centerY - 3, 2, 0, Math.PI * 2);
             ctx.fill();
 
-            // Pupilas
             ctx.fillStyle = '#000';
             ctx.beginPath();
             ctx.arc(centerX - 4, centerY - 3, 1, 0, Math.PI * 2);
@@ -877,7 +1037,16 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Event listeners
+        // Setup button
+        const startBtn = document.getElementById('startBtn');
+        if (startBtn) {
+            startBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                startGame();
+            });
+        }
+
+        // Keyboard - PREVENT SCROLL
         document.addEventListener('keydown', (e) => {
             if (e.key === ' ') {
                 e.preventDefault();
@@ -895,24 +1064,23 @@
                 stopGame();
             }
             if (e.key === 'ArrowUp') {
-                gameState.nextDirection = { x: 0, y: -1 };
                 e.preventDefault();
+                gameState.nextDirection = { x: 0, y: -1 };
             }
             if (e.key === 'ArrowDown') {
-                gameState.nextDirection = { x: 0, y: 1 };
                 e.preventDefault();
+                gameState.nextDirection = { x: 0, y: 1 };
             }
             if (e.key === 'ArrowLeft') {
-                gameState.nextDirection = { x: -1, y: 0 };
                 e.preventDefault();
+                gameState.nextDirection = { x: -1, y: 0 };
             }
             if (e.key === 'ArrowRight') {
-                gameState.nextDirection = { x: 1, y: 0 };
                 e.preventDefault();
+                gameState.nextDirection = { x: 1, y: 0 };
             }
         });
 
-        // Initializatie
         showStartScreen();
         requestAnimationFrame(gameLoop);
     </script>
