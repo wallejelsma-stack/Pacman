@@ -707,12 +707,14 @@
                     gameState.ghostMoveTimer = 0;
                 }
 
+                // Check collisions IMMEDIATELY after movement
+                checkGhostCollisions();
+
                 gameState.moveTimer = 0;
                 updateUI();
             }
 
-            // CHECK COLLISION EVERY FRAME (not just when movement happens!)
-            // This is critical so ghosts can't pass through smiley
+            // ALSO check collision every frame (captures collisions between movement cycles)
             checkGhostCollisions();
         }
 
@@ -751,6 +753,7 @@
                     }
                 }
 
+                // Don't move if it would go into a wall
                 if (!isWall(newX, newY)) {
                     ghost.x = newX;
                     ghost.y = newY;
@@ -759,22 +762,21 @@
         }
 
         function checkGhostCollisions() {
+            // Check distance to all ghosts (1 = adjacent, 0 = same cell)
             for (let i = 0; i < gameState.ghosts.length; i++) {
                 const ghost = gameState.ghosts[i];
+                const distance = Math.abs(ghost.x - gameState.smiley.x) + Math.abs(ghost.y - gameState.smiley.y);
 
-                if (ghost.x === gameState.smiley.x && ghost.y === gameState.smiley.y) {
-                    console.log(`✓ COLLISION DETECTED! Ghost ${i} at (${ghost.x},${ghost.y}) with Smiley. PowerUp: ${gameState.powerUpActive}`);
-
+                // Collision if on same cell OR adjacent (they touched!)
+                if (distance === 0) {
                     if (gameState.powerUpActive) {
                         // Smiley eats the ghost!
-                        console.log(`Smiley ate ghost ${i}!`);
                         gameState.score += 200;
                         // Respawn ghost away from smiley
                         let validSpawn = false;
                         while (!validSpawn) {
                             ghost.x = Math.floor(Math.random() * 18) + 1;
                             ghost.y = Math.floor(Math.random() * 18) + 1;
-                            // Make sure ghost doesn't spawn in wall or at smiley position
                             if (!isWall(ghost.x, ghost.y) &&
                                 !(ghost.x === gameState.smiley.x && ghost.y === gameState.smiley.y)) {
                                 validSpawn = true;
@@ -783,11 +785,9 @@
                     } else {
                         // Ghost catches smiley
                         if (!gameState.smileyHit) {  // Only trigger once per hit
-                            console.log(`Ghost ${i} caught smiley! Lives before: ${gameState.lives}`);
                             gameState.lives--;
                             gameState.smileyHit = true;
-                            gameState.hitTimer = 2.4;  // Animation duration (2x slower fade)
-                            console.log(`Lives after: ${gameState.lives}`);
+                            gameState.hitTimer = 2.4;
                             updateUI();
 
                             if (gameState.lives <= 0) {
