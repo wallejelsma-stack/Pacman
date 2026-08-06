@@ -865,7 +865,13 @@
             ctx.fill();
         }
 
-        function gameLoop(dt) {
+        let lastTime = Date.now();
+
+        function gameLoop(currentTime) {
+            const now = currentTime || Date.now();
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+
             update(dt);
             draw();
             requestAnimationFrame(gameLoop);
@@ -908,15 +914,7 @@
 
         // Initializatie
         showStartScreen();
-        let lastTime = Date.now();
-        gameLoop(0);
-
-        // Delta time update
-        setInterval(() => {
-            const now = Date.now();
-            const dt = (now - lastTime) / 1000;
-            lastTime = now;
-        }, 16);
+        requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>
